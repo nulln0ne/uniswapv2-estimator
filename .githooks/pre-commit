@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+echo "[pre-commit] make fmt"
+make fmt
+
+echo "[pre-commit] make vet"
+make vet
+
+echo "[pre-commit] make test"
+make test
+
+echo "[pre-commit] OK"
