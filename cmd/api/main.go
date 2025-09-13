@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/joho/godotenv"
 	"github.com/nulln0ne/uniswap-estimator/internal/config"
 	"github.com/nulln0ne/uniswap-estimator/internal/eth"
 	"github.com/nulln0ne/uniswap-estimator/internal/handler"
@@ -25,6 +26,8 @@ func main() {
 }
 
 func run() error {
+	_ = godotenv.Load()
+
 	cfg, err := config.FromEnv()
 	if err != nil {
 		return err

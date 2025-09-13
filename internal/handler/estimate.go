@@ -26,10 +26,10 @@ func NewEstimateHandler(logger *slog.Logger, svc *service.EstimateService) *Esti
 }
 
 type EstimateRequest struct {
-	Pool     string `query:"pool" json:"pool"`
-	Src      string `query:"src" json:"src"`
-	Dst      string `query:"dst" json:"dst"`
-	AmountIn string `query:"src_amount" json:"amount_in"`
+	Pool     string `query:"pool"`
+	Src      string `query:"src"`
+	Dst      string `query:"dst"`
+	AmountIn string `query:"src_amount"`
 }
 
 func (h *EstimateHandler) Handle() fiber.Handler {
