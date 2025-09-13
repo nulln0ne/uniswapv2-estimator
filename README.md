@@ -45,7 +45,13 @@ make build
 ### Example Usage
 
 ```bash
-curl "http://localhost:1337/estimate?pool=0xA43fe16908251ee70EF74718545e4FE6C5cCEc9f&src=0xA0b86a33E6441d0C95D9C02DAd5c8dE47a5e67E8&dst=0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2&src_amount=1000000000000000000"
+curl "http://localhost:1337/estimate" \
+  -G \
+  --data-urlencode "pool=0x0d4a11d5eeaac28ec3f61d100daf4d40471f1852" \
+  --data-urlencode "src=0xdAC17F958D2ee523a2206206994597C13D831ec7" \
+  --data-urlencode "dst=0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" \
+  --data-urlencode "src_amount=10000000"
+
 
 # Response:
 # 123456789012345678
