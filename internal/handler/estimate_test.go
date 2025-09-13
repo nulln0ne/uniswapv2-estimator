@@ -114,3 +114,169 @@ func TestEstimateHandler_Validation(t *testing.T) {
 		t.Fatalf("expected 400 for missing params, got %d", resp.StatusCode)
 	}
 }
+
+func TestEstimateHandler_AddressRequiredAndInvalid(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fe := &fakeEth{blockNumber: 1, storage: map[common.Address]map[common.Hash][]byte{}}
+	ec := newInprocEthClient(t, fe)
+	svc := service.NewEstimateService(logger, *ec)
+	h := NewEstimateHandler(logger, svc)
+
+	app := fiber.New()
+	app.Get("/estimate", h.Handle())
+
+	token := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	pool := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+
+	cases := []struct {
+		name string
+		path string
+		code int
+		msg  string
+	}{
+		{"missing_pool", "/estimate?src=" + token.Hex() + "&dst=" + token.Hex() + "&src_amount=1", http.StatusBadRequest, "pool address is required"},
+		{"missing_src", "/estimate?pool=" + pool.Hex() + "&dst=" + token.Hex() + "&src_amount=1", http.StatusBadRequest, "src address is required"},
+		{"missing_dst", "/estimate?pool=" + pool.Hex() + "&src=" + token.Hex() + "&src_amount=1", http.StatusBadRequest, "dst address is required"},
+		{"invalid_pool", "/estimate?pool=notanaddr&src=" + token.Hex() + "&dst=" + token.Hex() + "&src_amount=1", http.StatusBadRequest, "invalid pool address"},
+		{"invalid_src", "/estimate?pool=" + pool.Hex() + "&src=bad&dst=" + token.Hex() + "&src_amount=1", http.StatusBadRequest, "invalid src address"},
+		{"invalid_dst", "/estimate?pool=" + pool.Hex() + "&src=" + token.Hex() + "&dst=oops&src_amount=1", http.StatusBadRequest, "invalid dst address"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("app.Test error: %v", err)
+			}
+			if resp.StatusCode != tc.code {
+				t.Fatalf("unexpected status: got %d want %d", resp.StatusCode, tc.code)
+			}
+			b, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if got := string(b); got != tc.msg {
+				t.Fatalf("unexpected body: got %q want %q", got, tc.msg)
+			}
+		})
+	}
+}
+
+func TestEstimateHandler_SameAddresses(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fe := &fakeEth{blockNumber: 1, storage: map[common.Address]map[common.Hash][]byte{}}
+	ec := newInprocEthClient(t, fe)
+	svc := service.NewEstimateService(logger, *ec)
+	h := NewEstimateHandler(logger, svc)
+
+	app := fiber.New()
+	app.Get("/estimate", h.Handle())
+
+	addr := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	pool := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+
+	req := httptest.NewRequest(http.MethodGet, "/estimate?pool="+pool.Hex()+"&src="+addr.Hex()+"&dst="+addr.Hex()+"&src_amount=1", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test error: %v", err)
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unexpected status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if got, want := string(b), ErrSameAddresses.Message; got != want {
+		t.Fatalf("unexpected body: got %q want %q", got, want)
+	}
+}
+
+func TestEstimateHandler_AmountErrors(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fe := &fakeEth{blockNumber: 1, storage: map[common.Address]map[common.Hash][]byte{}}
+	ec := newInprocEthClient(t, fe)
+	svc := service.NewEstimateService(logger, *ec)
+	h := NewEstimateHandler(logger, svc)
+
+	app := fiber.New()
+	app.Get("/estimate", h.Handle())
+
+	pool := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+	src := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	dst := common.HexToAddress("0x00000000000000000000000000000000000000bb")
+
+	cases := []struct {
+		name   string
+		amount string
+		msg    string
+	}{
+		{"missing", "", "invalid amount_in: amount is required"},
+		{"invalid", "not-a-number", "invalid amount_in: invalid amount format"},
+		{"zero", "0", "invalid amount_in: amount must be greater than zero"},
+		{"negative", "-1", "invalid amount_in: amount must be greater than zero"},
+	}
+
+	base := "/estimate?pool=" + pool.Hex() + "&src=" + src.Hex() + "&dst=" + dst.Hex() + "&src_amount="
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, base+tc.amount, nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatalf("app.Test error: %v", err)
+			}
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("unexpected status: got %d want %d", resp.StatusCode, http.StatusBadRequest)
+			}
+			b, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if got := string(b); got != tc.msg {
+				t.Fatalf("unexpected body: got %q want %q", got, tc.msg)
+			}
+		})
+	}
+}
+
+func TestEstimateHandler_ServiceErrors(t *testing.T) {
+	token0 := common.HexToAddress("0x00000000000000000000000000000000000000aa")
+	token1 := common.HexToAddress("0x00000000000000000000000000000000000000bb")
+	wrong := common.HexToAddress("0x00000000000000000000000000000000000000cc")
+	pool := common.HexToAddress("0x0000000000000000000000000000000000000abc")
+
+	// Storage with token0/token1 set; reserves empty to trigger ErrEmptyReserves
+	fe := &fakeEth{blockNumber: 42, storage: map[common.Address]map[common.Hash][]byte{pool: {common.BigToHash(new(big.Int).SetUint64(6)): rightPadAddress(token0), common.BigToHash(new(big.Int).SetUint64(7)): rightPadAddress(token1), common.BigToHash(new(big.Int).SetUint64(8)): packReserves(0, 0, 0)}}}
+	ec := newInprocEthClient(t, fe)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	svc := service.NewEstimateService(logger, *ec)
+	h := NewEstimateHandler(logger, svc)
+
+	app := fiber.New()
+	app.Get("/estimate", h.Handle())
+
+	// ErrEmptyReserves -> 400 with specific message
+	req1 := httptest.NewRequest(http.MethodGet, "/estimate?pool="+pool.Hex()+"&src="+token0.Hex()+"&dst="+token1.Hex()+"&src_amount=1", nil)
+	resp1, err := app.Test(req1)
+	if err != nil {
+		t.Fatalf("app.Test error: %v", err)
+	}
+	if resp1.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unexpected status: got %d want %d", resp1.StatusCode, http.StatusBadRequest)
+	}
+	b1, _ := io.ReadAll(resp1.Body)
+	_ = resp1.Body.Close()
+	if got, want := string(b1), ErrEmptyReservesBadRequest.Message; got != want {
+		t.Fatalf("unexpected body: got %q want %q", got, want)
+	}
+
+	// Pair mismatch -> 500 internal mapping
+	req2 := httptest.NewRequest(http.MethodGet, "/estimate?pool="+pool.Hex()+"&src="+token0.Hex()+"&dst="+wrong.Hex()+"&src_amount=1", nil)
+	resp2, err := app.Test(req2)
+	if err != nil {
+		t.Fatalf("app.Test error: %v", err)
+	}
+	if resp2.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("unexpected status: got %d want %d", resp2.StatusCode, http.StatusInternalServerError)
+	}
+	b2, _ := io.ReadAll(resp2.Body)
+	_ = resp2.Body.Close()
+	if got, want := string(b2), ErrEstimationFailedInternal.Message; got != want {
+		t.Fatalf("unexpected body: got %q want %q", got, want)
+	}
+}
