@@ -11,12 +11,13 @@ var (
 func GetAmountOut(dst, t1, t2 *big.Int, amountIn, reserveIn, reserveOut *big.Int) *big.Int {
 	// t1 = amountIn * 997
 	t1.Mul(amountIn, feeMul)
-	// t2 = reserveIn * 1000
-	t2.Mul(reserveIn, feeDen)
-	// t2 = t2 + t1  (denominator)
-	t2.Add(t2, t1)
+	// dst = reserveIn * 1000 (will use as denominator temp)
+	dst.Mul(reserveIn, feeDen)
+	// t2 = dst + t1  (denominator in t2; avoids z==y alias later)
+	t2.Add(dst, t1)
 	// dst = t1 * reserveOut (numerator)
 	dst.Mul(t1, reserveOut)
-	// dst = dst / t2  (avoid aliasing z==y)
-	return dst.Div(dst, t2)
+	// dst = dst / t2 using QuoRem; remainder goes into t1
+	dst.QuoRem(dst, t2, t1)
+	return dst
 }

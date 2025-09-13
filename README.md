@@ -78,6 +78,5 @@ goos: darwin
 goarch: arm64
 pkg: github.com/nulln0ne/uniswap-estimator/pkg/uniswapv2
 cpu: Apple M1 Pro
-
-BenchmarkGetAmountOut_NoAlloc-8    20,183,210    59.39 ns/op    8 B/op    1 allocs/op
+BenchmarkGetAmountOut_NoAlloc-8         23573226                50.66 ns/op            0 B/op          0 allocs/op
 ```
