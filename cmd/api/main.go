@@ -1,3 +1,7 @@
+// Package main starts the uniswap-estimator HTTP service.
+//
+// It wires configuration, logging, Ethereum RPC client, and HTTP handlers
+// to expose a GET /estimate endpoint for Uniswap V2 swap estimations.
 package main
 
 import (
@@ -18,6 +22,8 @@ import (
 	"github.com/nulln0ne/uniswap-estimator/internal/service"
 )
 
+// main is the entrypoint that invokes run and exits with a non-zero status
+// code on error.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -25,6 +31,8 @@ func main() {
 	}
 }
 
+// run initializes configuration, logging, network clients and HTTP routes,
+// then runs the server until a shutdown signal is received.
 func run() error {
 	_ = godotenv.Load()
 

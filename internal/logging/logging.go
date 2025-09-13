@@ -1,3 +1,4 @@
+// Package logging provides helpers to construct a configured slog.Logger.
 package logging
 
 import (
@@ -6,7 +7,8 @@ import (
 	"strings"
 )
 
-// Supported levels: debug, info, warn, error.
+// NewLogger returns a slog.Logger configured to write text logs to stdout at
+// the provided level. Supported levels: debug, info, warn, error.
 func NewLogger(level string) *slog.Logger {
 	lvl := parseLevel(level)
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: lvl})

@@ -12,11 +12,15 @@ import (
 	"github.com/nulln0ne/uniswap-estimator/pkg/uniswapv2"
 )
 
+// EstimateService provides Uniswap V2 output amount estimations by reading
+// on-chain pair storage directly.
 type EstimateService struct {
 	BaseService
 	ethereumClient *ethclient.Client
 }
 
+// NewEstimateService constructs an EstimateService using the provided logger
+// and Ethereum client.
 func NewEstimateService(logger *slog.Logger, ec ethclient.Client) *EstimateService {
 	return &EstimateService{
 		BaseService:    BaseService{logger: logger},
@@ -39,6 +43,9 @@ func NewEstimateService(logger *slog.Logger, ec ethclient.Client) *EstimateServi
 //     uint112 private reserve1;           // uses single storage slot, accessible via getReserves
 //     uint32  private blockTimestampLast; // uses single storage slot, accessible via getReserves
 
+// Estimate computes the expected output amount for swapping amountIn of src to
+// dst in the provided pool at the latest block. It validates the token pair,
+// reads reserves from storage and applies the Uniswap V2 formula.
 func (e *EstimateService) Estimate(ctx context.Context, pool, src, dst common.Address, amountIn *big.Int) (*big.Int, error) {
 	e.logger.Debug("estimating swap", "pool", pool.Hex(), "src", src.Hex(), "dst", dst.Hex(), "in", amountIn.String())
 

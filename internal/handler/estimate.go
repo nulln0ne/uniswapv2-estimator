@@ -11,11 +11,14 @@ import (
 	"github.com/nulln0ne/uniswap-estimator/internal/service"
 )
 
+// EstimateHandler handles HTTP requests for Uniswap V2 swap estimations.
 type EstimateHandler struct {
 	BaseHandler
 	service *service.EstimateService
 }
 
+// NewEstimateHandler constructs an EstimateHandler with the provided logger and
+// estimate service.
 func NewEstimateHandler(logger *slog.Logger, svc *service.EstimateService) *EstimateHandler {
 	return &EstimateHandler{
 		BaseHandler: BaseHandler{
@@ -25,6 +28,8 @@ func NewEstimateHandler(logger *slog.Logger, svc *service.EstimateService) *Esti
 	}
 }
 
+// EstimateRequest represents the supported query parameters for the /estimate
+// endpoint.
 type EstimateRequest struct {
 	Pool     string `query:"pool"`
 	Src      string `query:"src"`
@@ -32,6 +37,8 @@ type EstimateRequest struct {
 	AmountIn string `query:"src_amount"`
 }
 
+// Handle returns a Fiber handler that validates input, delegates the
+// estimation to the service layer, and writes the result as a decimal string.
 func (h *EstimateHandler) Handle() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		req, err := h.parseAndValidateRequest(c)
